@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Torchlit - 完美修复版</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --dungeon-bg: #34495e;
+            --card-ratio: 1.4;
+            --hand-card-w: 18vw; 
+            --hand-card-h: calc(18vw * var(--card-ratio));
+            --trick-card-w: 16vw;
+            --trick-card-h: calc(16vw * var(--card-ratio));
+            --mini-w: 24px;
+            --mini-h: 34px;
+            
+            --red: #c0392b; --blue: #2980b9; --yellow: #f1c40f;
+            --green: #145a32; --purple: #8e44ad; --cyan: #4dd0e1; --orange: #d35400;
+        }
+
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color); color: white; margin: 0;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+
+        #menu-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 200;
+        }
+        .btn {
+            padding: 12px 30px; margin: 10px; font-size: 20px; cursor: pointer;
+            background: #e67e22; border: none; color: white; border-radius: 50px; font-weight: bold; width: 70%;
+        }
+
+        #game-area { flex: 1; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; position: relative; }
+
+        #info-bar {
+            display: flex; justify-content: space-between; padding: 8px 10px;
+            background: rgba(0,0,0,0.2); font-size: 14px; color: #eee; border-radius: 4px; margin-bottom: 5px;
+        }
+
+        #result-modal {
+            position: absolute; top: 35%; left: 5%; width: 90%;
+            background: rgba(0, 0, 0, 0.95); border: 2px solid #f1c40f; border-radius: 12px;
+            padding: 20px; box-sizing: border-box; display: none;
+            flex-direction: column; align-items: center; z-index: 150; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        #result-content { font-size: 16px; line-height: 1.8; width: 100%; margin-bottom: 15px; text-align: center; }
+        .result-btn { padding: 10px 30px; background: #27ae60; border: none; color: white; border-radius: 8px; font-size: 16px; }
+
+        #dungeon-container { display: flex; justify-content: center; margin-bottom: 5px; flex-shrink: 0; z-index: 101; }
+        #dungeon-track { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 100%; }
+
+        .dungeon-cell {
+            width: 22vw; max-width: 90px; min-height: 100px;
+            background: var(--dungeon-bg); border: 1px solid #566573; border-radius: 6px;
+            position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 2px;
+        }
+        .dungeon-header { width: 100%; display: flex; justify-content: space-between; padding: 0 4px; box-sizing: border-box; margin-bottom: 2px; }
+        .dungeon-number { font-size: 14px; color: #bdc3c7; font-weight: bold; }
+
+        .player-tokens { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; width: 100%; margin-bottom: 6px; min-height: 24px; }
+        .p-token-wrapper { display: flex; flex-direction: column; align-items: center; margin: 0 2px; min-width: 14px; }
+        .p-name { font-size: 12px; line-height: 12px; margin-bottom: 2px; color: #fff; text-shadow: 0 0 2px black; font-weight: bold; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+
+        .dungeon-cards-area { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: auto; padding-bottom: 4px; }
+        .mini-card {
+            width: var(--mini-w); height: var(--mini-h); border-radius: 3px; border: 1px solid #fff;
+            font-size: 12px; font-weight: bold; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3); margin-top: -26px; position: relative;
+            color: white; text-shadow: 0 0 2px black;
+        }
+        .mini-card:first-child { margin-top: 0; }
+        .mini-card.torch { background: #333; color: #e67e22; border-color: #e67e22; }
+
+        #center-field { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; min-height: 180px; }
+        #message-box { position: absolute; top: 0; background: rgba(0,0,0,0.7); color: #f1c40f; padding: 6px 16px; border-radius: 16px; font-size: 14px; pointer-events: none; z-index: 10; }
+
+        #trick-area { display: flex; gap: 10px; align-items: center; justify-content: center; width: 100%; }
+        .trick-card-wrap { display: flex; flex-direction: column; align-items: center; }
+        .trick-card-inner { width: var(--trick-card-w); height: var(--trick-card-h); max-width: 70px; max-height: 100px; }
+        .trick-player-label { font-size: 14px; margin-top: 4px; color: #eee; font-weight: bold; text-shadow: 1px 1px 2px black; }
+
+        #player-hand-container { height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; background: linear-gradient(to top, rgba(0,0,0,0.5), transparent); padding-bottom: 5px; overflow: hidden; position: relative; }
+        #action-prompt { font-size: 14px; color: #bdc3c7; margin-bottom: 8px; text-shadow: 1px 1px 2px black;}
+        #player-hand { display: flex; justify-content: center; align-items: flex-end; padding: 0 10px; height: 120px; }
+        .hand-card-wrapper { width: var(--hand-card-w); max-width: 70px; height: var(--hand-card-h); max-height: 100px; margin-right: -38px; transition: margin-right 0.2s, transform 0.2s; position: relative; }
+        .hand-card-wrapper:last-child { margin-right: 0; }
+        .hand-card-wrapper:hover { margin-right: -5px; z-index: 20 !important; }
+
+        .card { width: 100%; height: 100%; border-radius: 6px; background-color: white; border: 1px solid #7f8c8d; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; font-size: 20px; cursor: pointer; position: relative; box-shadow: -2px 0 6px rgba(0,0,0,0.4); transition: transform 0.2s, filter 0.2s; }
+        .card.playable { border: 2px solid #f1c40f; z-index: 10; transform: translateY(-20px); }
+        .card.disabled { filter: grayscale(100%); opacity: 0.6; background: #bdc3c7; transform: translateY(0); }
+        
+        .c-red { background: var(--red); color: white; }
+        .c-blue { background: var(--blue); color: white; }
+        .c-yellow { background: var(--yellow); color: black; }
+        .c-green { background: var(--green); color: white; } 
+        .c-purple { background: var(--purple); color: white; }
+        .c-cyan { background: var(--cyan); color: black; }
+        .c-orange { background: var(--orange); color: black; }
+
+        .card-corner { position: absolute; top: 2px; left: 4px; font-size: 14px; line-height: 1; }
+        .card-center { font-size: 28px; }
+        .dragon-icon { position: absolute; top: 2px; right: 4px; font-size: 14px; }
+
+        #keeper-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.2); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding-top: 100px; }
+        .keeper-panel { background: rgba(0, 0, 0, 0.85); border: 1px solid #e67e22; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        #keeper-cards-container { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; justify-content: center; }
+        .keeper-item { width: 60px; height: 90px; transition: 0.2s; border-radius: 6px; }
+        .keeper-item.selected { outline: 4px solid #f1c40f; transform: scale(1.1); z-index: 2; }
+
+        #reserved-ui { position: absolute; bottom: 140px; right: 10px; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+        #reserved-slot { width: 45px; height: 65px; border: 2px dashed #7f8c8d; border-radius: 6px; display: flex; justify-content: center; align-items: center; }
+        #reserved-label { text-align: center; color: #ccc; font-size: 12px; margin-top: 4px; text-shadow: 1px 1px 2px black; }
+
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen">
+        <h1 style="color: #e67e22; font-size: 40px; margin-bottom: 5px;">Torchlit</h1>
+        <p style="color: #aaa; font-size: 16px; margin-bottom: 30px;">移动重制版</p>
+        <button class="btn" onclick="initGame(3)">3 人游戏</button>
+        <button class="btn" onclick="initGame(4)">4 人游戏</button>
+        <button class="btn" onclick="initGame(5)">5 人游戏</button>
+    </div>
+
+    <div id="keeper-overlay">
+        <div class="keeper-panel">
+            <h3 style="color: #e67e22; font-size: 24px; margin: 0 0 10px 0;">地牢看守者</h3>
+            <p id="keeper-text" style="color:#ccc; font-size:14px; text-align: center; margin-bottom: 10px;">选择保留的卡牌</p>
+            <div id="keeper-cards-container"></div>
+            <button class="btn" style="width:auto; font-size:18px; margin: 10px 0 0 0;" onclick="confirmKeeperChoice()">放入地牢</button>
+        </div>
+    </div>
+
+    <div id="game-area" style="display:none;">
+        <div id="info-bar">
+            <span id="round-info">R: 1/3</span>
+            <span id="score-info">得分: 0</span>
+        </div>
+
+        <div id="result-modal">
+            <h3 style="color:#f1c40f; margin:0 0 15px 0; font-size: 22px;">回合结算</h3>
+            <div id="result-content"></div>
+            <button class="result-btn" onclick="nextRoundOrGame()">继续</button>
+        </div>
+
+        <div id="dungeon-container">
+            <div id="dungeon-track"></div>
+        </div>
+
+        <div id="center-field">
+            <div id="message-box">准备开始...</div>
+            <div id="trick-area"></div>
+        </div>
+
+        <div id="reserved-ui">
+            <div id="reserved-slot"></div>
+            <div id="reserved-label">预测牌</div>
+        </div>
+
+        <div id="player-hand-container">
+            <div id="action-prompt">请出牌</div>
+            <div id="player-hand"></div>
+        </div>
+    </div>
+
+    <script>
+        const COLORS = [
+            { id: 'red', hex: '#c0392b', name: '红', dragon: true },
+            { id: 'blue', hex: '#2980b9', name: '蓝', dragon: false },
+            { id: 'yellow', hex: '#f1c40f', name: '黄', dragon: false },
+            { id: 'green', hex: '#145a32', name: '绿', dragon: false }, 
+            { id: 'purple', hex: '#8e44ad', name: '紫', dragon: false },
+            { id: 'cyan', hex: '#4dd0e1', name: '青', dragon: false }, 
+            { id: 'orange', hex: '#d35400', name: '橙', dragon: false }
+        ];
+        const P_COLORS = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6'];
+
+        let game = {
+            numPlayers: 3, round: 1, maxRounds: 3, dungeons: [], deck: [], trick: [], players: [],
+            turnIndex: 0, keeperIndex: -1, phase: 'INIT', scores: [], keeperSelection: {}, keeperGroups: {}
+        };
+
+        function initGame(n) {
+            game.numPlayers = n;
+            game.scores = new Array(n).fill(0);
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('game-area').style.display = 'flex';
+            setupRound();
+        }
+
+        function setupRound() {
+            document.getElementById('result-modal').style.display = 'none';
+            document.getElementById('reserved-slot').innerHTML = '';
+            document.getElementById('reserved-slot').style.border = '2px dashed #7f8c8d'; 
+            
+            let dCount = (game.numPlayers === 3) ? 7 : 8;
+            game.dungeons = Array(dCount).fill().map(()=>[]);
+            
+            game.deck = [];
+            let maxRank = (game.numPlayers === 3) ? 6 : 7;
+            COLORS.forEach(c => {
+                if(game.numPlayers === 3 && c.id === 'cyan') return;
+                for(let r=0; r<=maxRank; r++) {
+                    game.deck.push({
+                        color: c.id, rank: r, dragon: c.dragon,
+                        uid: Math.random().toString(36).slice(2), isTorch: false
+                    });
+                }
+            });
+            game.deck.sort(() => Math.random() - 0.5);
+
+            game.players = [];
+            let handSize = Math.floor(game.deck.length / game.numPlayers);
+            let pColors = [...P_COLORS].slice(0, game.numPlayers).sort(()=>Math.random()-0.5);
+
+            for(let i=0; i<game.numPlayers; i++) {
+                let hand = game.deck.slice(i*handSize, (i+1)*handSize);
+                hand.sort((a,b) => (a.color === b.color) ? a.rank - b.rank : a.color.localeCompare(b.color));
+                game.players.push({
+                    id: i, name: i===0 ? '你' : '电脑'+i, isHuman: i===0,
+                    color: pColors[i], hand: hand, reserved: null, pos: 0, bonus: 0
+                });
+            }
+
+            renderDungeons();
+            updateUI();
+            
+            if (game.round === 1) game.turnIndex = Math.floor(Math.random() * game.numPlayers);
+            else { game.turnIndex = game.keeperIndex; if(game.turnIndex < 0) game.turnIndex = 0; }
+
+            game.phase = 'PREDICT';
+            msg(`第${game.round}轮: 请选择预测牌`);
+            renderHand();
+        }
+
+        function onCardClick(idx) {
+            let p = game.players[0];
+            let c = p.hand[idx];
+
+            if(game.phase === 'PREDICT') {
+                p.reserved = p.hand.splice(idx, 1)[0];
+                for(let i=1; i<game.numPlayers; i++) {
+                    let ai = game.players[i];
+                    let ridx = Math.floor(Math.random()*ai.hand.length);
+                    ai.reserved = ai.hand.splice(ridx, 1)[0];
+                }
+                
+                let slot = document.getElementById('reserved-slot');
+                slot.innerHTML = createCardHTML(p.reserved, false); 
+                slot.style.border = 'none'; 
+                
+                game.phase = 'PLAY';
+                msg("出牌阶段");
+                renderHand();
+                checkTurn();
+                return;
+            }
+
+            if(game.phase === 'PLAY' || game.phase === 'FINAL_TRICK') {
+                if(game.turnIndex !== 0) return;
+                if(!isPlayable(c, p.hand)) { msg("需跟花色!"); return; }
+                playCard(0, idx);
+            }
+        }
+
+        function checkTurn() {
+            renderHand(); updateUI();
+            let pid = game.turnIndex;
+            let p = game.players[pid];
+            if(p.isHuman) {
+                document.getElementById('action-prompt').innerText = "轮到你了";
+                document.getElementById('action-prompt').style.color = "#f1c40f";
+            } else {
+                document.getElementById('action-prompt').innerText = `${p.name} 思考中...`;
+                document.getElementById('action-prompt').style.color = "#ccc";
+                setTimeout(() => aiPlay(p), 700);
+            }
+        }
+
+        function aiPlay(p) {
+            let valid = p.hand.filter(c => isPlayable(c, p.hand));
+            if(!valid.length) valid = p.hand;
+            let choice = valid[Math.floor(Math.random()*valid.length)];
+            let idx = p.hand.indexOf(choice);
+            playCard(p.id, idx);
+        }
+
+        function isPlayable(c, hand) {
+            if(game.phase === 'FINAL_TRICK') return true;
+            if(game.trick.length === 0) return true;
+            let lead = game.trick[0].card;
+            if(lead.color === 'red' && lead.dragon) return true; 
+            let hasSuit = hand.some(h => h.color === lead.color);
+            if(hasSuit && c.color !== lead.color) return false;
+            return true;
+        }
+
+        function playCard(pid, idx) {
+            let p = game.players[pid];
+            let c = p.hand.splice(idx, 1)[0];
+            game.trick.push({ card:c, pid:pid });
+            renderTrick(); renderHand();
+
+            if(game.trick.length === game.numPlayers) {
+                setTimeout(resolveTrick, 800);
+            } else {
+                game.turnIndex = (game.turnIndex + 1) % game.numPlayers;
+                checkTurn();
+            }
+        }
+
+        function resolveTrick() {
+            let lead = game.trick[0].card;
+            let hasDragon = game.trick.some(t => t.card.color === 'red');
+            let winner = -1;
+            let winRank = -1;
+
+            if(hasDragon) {
+                let list = game.trick.filter(t => t.card.color === 'red');
+                list.sort((a,b) => b.card.rank - a.card.rank);
+                winner = list[0].pid;
+                winRank = list[0].card.rank;
+            } else {
+                let list = game.trick.filter(t => t.card.color === lead.color);
+                list.sort((a,b) => b.card.rank - a.card.rank);
+                winner = list[0].pid;
+                winRank = list[0].card.rank;
+            }
+
+            msg(`${game.players[winner].name} 赢了`);
+            game.trick.filter(t => t.card.rank === winRank).forEach(t => {
+                let p = game.players[t.pid];
+                p.pos = (p.pos + 1) % game.dungeons.length;
+            });
+            renderDungeons();
+
+            let min = 99;
+            game.trick.forEach(t => { if(t.card.rank < min) min = t.card.rank; });
+            let minList = game.trick.filter(t => t.card.rank === min);
+            game.keeperIndex = minList[minList.length-1].pid;
+
+            msg(`${game.players[game.keeperIndex].name} 是看守者`);
+            game.phase = 'KEEPER';
+            setTimeout(runKeeper, 800);
+        }
+
+        function runKeeper() {
+            document.getElementById('trick-area').innerHTML = '';
+            let k = game.players[game.keeperIndex];
+            game.keeperGroups = {};
+            game.trick.forEach(t => {
+                if(!game.keeperGroups[t.card.color]) game.keeperGroups[t.card.color] = [];
+                game.keeperGroups[t.card.color].push(t.card);
+            });
+            if(k.isHuman) showKeeperUI(); else aiKeeper();
+        }
+
+        function showKeeperUI() {
+            let ov = document.getElementById('keeper-overlay');
+            let con = document.getElementById('keeper-cards-container');
+            let txt = document.getElementById('keeper-text');
+            ov.style.display = 'flex'; con.innerHTML = ''; game.keeperSelection = {};
+
+            let allUnique = Object.keys(game.keeperGroups).length === game.trick.length;
+            txt.innerText = allUnique ? "每张颜色都不同：自由选择" : "有重复颜色：重复组必须选1，单张组必留";
+
+            game.trick.forEach(t => {
+                let c = t.card;
+                let div = document.createElement('div');
+                div.className = 'keeper-item';
+                div.innerHTML = createCardHTML(c);
+                div.onclick = () => toggleKeeper(c.uid, div, allUnique);
+                
+                let sel = false;
+                if(!allUnique) {
+                    let g = game.keeperGroups[c.color];
+                    if(g.length === 1) { sel = true; div.style.opacity = '0.5'; } 
+                    else if(g[0].uid === c.uid) sel = true;
+                }
+                if(sel) { game.keeperSelection[c.uid] = true; div.classList.add('selected'); }
+                con.appendChild(div);
+            });
+        }
+
+        function toggleKeeper(uid, div, allUnique) {
+            let c = game.trick.find(t=>t.card.uid === uid).card;
+            if(allUnique) {
+                game.keeperSelection[uid] = !game.keeperSelection[uid];
+                div.classList.toggle('selected');
+            } else {
+                let g = game.keeperGroups[c.color];
+                if(g.length > 1) {
+                    g.forEach(gc => game.keeperSelection[gc.uid] = false);
+                    game.keeperSelection[uid] = true;
+                    Array.from(div.parentNode.children).forEach(child => {
+                        let cUid = child.querySelector('.card').dataset.uid;
+                        if(game.trick.find(t=>t.card.uid===cUid).card.color === c.color) {
+                            if(cUid === uid) child.classList.add('selected');
+                            else child.classList.remove('selected');
+                        }
+                    });
+                }
+            }
+        }
+
+        function confirmKeeperChoice() {
+            let kept = [];
+            game.trick.forEach(t => { if(game.keeperSelection[t.card.uid]) kept.push(t.card); });
+            finishKeeper(kept);
+            document.getElementById('keeper-overlay').style.display = 'none';
+        }
+
+        function aiKeeper() {
+            let k = game.players[game.keeperIndex];
+            let kept = [];
+            let allUnique = Object.keys(game.keeperGroups).length === game.trick.length;
+            if(allUnique) {
+                game.trick.forEach(t => {
+                    let c = t.card;
+                    if(c.rank === k.pos || c.dragon) kept.push(c);
+                    else if(Math.random()>0.5) kept.push(c);
+                });
+            } else {
+                for(let kCol in game.keeperGroups) {
+                    let g = game.keeperGroups[kCol];
+                    if(g.length === 1) kept.push(g[0]);
+                    else {
+                        let best = g[0];
+                        for(let sub of g) { if(sub.rank === k.pos) best = sub; }
+                        kept.push(best);
+                    }
+                }
+            }
+            finishKeeper(kept);
+        }
+
+        function finishKeeper(kept) {
+            kept.forEach(c => game.dungeons[c.rank].push(c));
+            renderDungeons();
+            game.trick = [];
+
+            // 关键修复：只要有玩家手牌为1且有预测牌，就触发拿回牌逻辑
+            let p0 = game.players[0];
+            if (p0.hand.length === 1 && p0.reserved !== null) {
+                msg("最终阶段：收回预测牌");
+                game.players.forEach(p => {
+                    if(p.reserved) { 
+                        p.hand.push(p.reserved); 
+                        p.reserved = null; 
+                    }
+                    p.hand.sort((a,b) => (a.color === b.color) ? a.rank - b.rank : a.color.localeCompare(b.color));
+                });
+                
+                // 强制清空 UI 槽位
+                document.getElementById('reserved-slot').innerHTML = '';
+                document.getElementById('reserved-slot').style.border = '2px dashed #7f8c8d'; 
+                
+                renderHand();
+                game.phase = 'FINAL_TRICK';
+                game.turnIndex = game.keeperIndex;
+                checkTurn();
+                return;
+            }
+
+            // 如果已经没有预测牌，且手牌剩1张，说明刚刚打完了最终墩，现在结算
+            if (p0.hand.length === 1 && p0.reserved === null) {
+                handleRoundEnd();
+                return;
+            }
+
+            game.phase = 'PLAY';
+            game.turnIndex = game.keeperIndex;
+            checkTurn();
+        }
+
+        function handleRoundEnd() {
+            game.players.forEach(p => {
+                let last = p.hand[0];
+                if(last.rank === p.pos) { p.bonus = 3; }
+                else { last.isTorch = true; game.dungeons[last.rank].push(last); }
+                p.hand = [];
+            });
+            renderDungeons(); renderHand();
+
+            let rScore = new Array(game.numPlayers).fill(0);
+            game.dungeons.forEach((ds, idx) => {
+                if(!ds.length) return;
+                let people = game.players.filter(p => p.pos === idx);
+                if(!people.length) return;
+                let val = 0;
+                ds.forEach(c => { if(c.isTorch || c.color === 'red') val += 2; else val += 1; });
+                let avg = Math.floor(val / people.length);
+                people.forEach(p => rScore[p.id] += avg);
+            });
+
+            let html = "";
+            game.players.forEach(p => {
+                rScore[p.id] += p.bonus;
+                game.scores[p.id] += rScore[p.id];
+                html += `<div>${p.name}: <span style="color:#2ecc71">+${rScore[p.id]}</span> (总: ${game.scores[p.id]})</div>`;
+                p.bonus = 0;
+            });
+            document.getElementById('result-content').innerHTML = html;
+            document.getElementById('result-modal').style.display = 'flex';
+        }
+
+        function nextRoundOrGame() {
+            if(game.round < game.maxRounds) { game.round++; setupRound(); }
+            else {
+                let max = Math.max(...game.scores);
+                let wins = game.players.filter(p => game.scores[p.id] === max);
+                let txt = "游戏结束!<br><br>";
+                if(wins.some(p => p.isHuman)) txt += "<span style='color:#f1c40f;font-size:24px'>你赢了!</span>";
+                else txt += `胜者: ${wins.map(p=>p.name).join(',')}`;
+                document.getElementById('result-content').innerHTML = txt;
+                document.querySelector('.result-btn').innerText = "重新开始";
+                document.querySelector('.result-btn').onclick = () => location.reload();
+            }
+        }
+
+        function renderDungeons() {
+            let tk = document.getElementById('dungeon-track'); tk.innerHTML = '';
+            game.dungeons.forEach((cards, i) => {
+                let cell = document.createElement('div'); cell.className = 'dungeon-cell';
+                let head = document.createElement('div'); head.className = 'dungeon-header';
+                head.innerHTML = `<div class="dungeon-number">${i}</div>`; cell.appendChild(head);
+                let tArea = document.createElement('div'); tArea.className = 'player-tokens';
+                game.players.forEach(p => {
+                    if(p.pos === i) {
+                        let w = document.createElement('div'); w.className = 'p-token-wrapper';
+                        w.innerHTML = `<span class="p-name" style="font-size:12px">${p.name}</span><div class="dot" style="background:${p.color}"></div>`;
+                        tArea.appendChild(w);
+                    }
+                });
+                cell.appendChild(tArea);
+                let cArea = document.createElement('div'); cArea.className = 'dungeon-cards-area';
+                cards.forEach(c => {
+                    let mc = document.createElement('div'); mc.className = `mini-card c-${c.color}`;
+                    if(c.isTorch) mc.className += " torch";
+                    if(c.isTorch) mc.innerHTML = "🔥"; else mc.innerHTML = c.rank + (c.dragon?"<br>🐉":"");
+                    cArea.appendChild(mc);
+                });
+                cell.appendChild(cArea); tk.appendChild(cell);
+            });
+        }
+        function renderTrick() {
+            let a = document.getElementById('trick-area'); a.innerHTML = '';
+            game.trick.forEach(t => {
+                let d = document.createElement('div'); d.className = 'trick-card-wrap';
+                let inner = document.createElement('div'); inner.className = 'trick-card-inner';
+                inner.innerHTML = createCardHTML(t.card);
+                let l = document.createElement('div'); l.className = 'trick-player-label';
+                l.innerText = game.players[t.pid].name;
+                d.appendChild(inner); d.appendChild(l); a.appendChild(d);
+            });
+        }
+        function renderHand() {
+            let h = document.getElementById('player-hand'); h.innerHTML = '';
+            let p = game.players[0];
+            p.hand.forEach((c, i) => {
+                let w = document.createElement('div'); w.className = 'hand-card-wrapper';
+                w.innerHTML = createCardHTML(c);
+                let playable = true;
+                if(game.phase === 'PLAY' || game.phase === 'FINAL_TRICK') { if(game.turnIndex === 0) playable = isPlayable(c, p.hand); }
+                let cd = w.querySelector('.card');
+                if((game.phase === 'PLAY' || game.phase === 'FINAL_TRICK') && game.turnIndex===0) {
+                    if(playable) cd.classList.add('playable'); else cd.classList.add('disabled');
+                }
+                w.onclick = () => onCardClick(i); h.appendChild(w);
+            });
+        }
+        function updateUI() {
+            document.getElementById('round-info').innerText = `R: ${game.round}/${game.maxRounds}`;
+            document.getElementById('score-info').innerText = `得分: ${game.scores[0]}`;
+        }
+        function createCardHTML(c, back=false) {
+            if(back) return `<div class="card" style="background:#333; color:#e67e22; border-color:#e67e22; display:flex; justify-content:center; align-items:center; font-size:24px;">🔥</div>`;
+            return `<div class="card c-${c.color}" data-uid="${c.uid}"><div class="card-corner">${c.rank}</div><div class="card-center">${c.rank}</div>${c.dragon ? '<div class="dragon-icon">🐉</div>' : ''}</div>`;
+        }
+        function msg(t) { document.getElementById('message-box').innerText = t; }
+    </script>
+</body>
+</html>
