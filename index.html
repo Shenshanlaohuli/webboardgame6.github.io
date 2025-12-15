@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Torchlit - 最终完整版</title>
+    <title>Torchlit - 完整规则版</title>
     <style>
         :root {
             --bg-color: #2c3e50;
@@ -27,14 +27,45 @@
             user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
+        /* 菜单屏幕样式优化 */
         #menu-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 200;
+            padding: 20px; box-sizing: border-box;
+            overflow-y: auto; /* 防止小屏显示不全 */
         }
+        
+        /* 规则说明框 */
+        .rules-container {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            max-width: 400px;
+            width: 90%;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #ddd;
+            text-align: left;
+        }
+        .rules-title {
+            color: #f1c40f;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 5px;
+        }
+        .rule-item { margin-bottom: 5px; }
+        .rule-highlight { color: #f1c40f; font-weight: bold; }
+
         .btn {
-            padding: 12px 30px; margin: 10px; font-size: 20px; cursor: pointer;
-            background: #e67e22; border: none; color: white; border-radius: 50px; font-weight: bold; width: 70%;
+            padding: 12px 30px; margin: 8px; font-size: 18px; cursor: pointer;
+            background: #e67e22; border: none; color: white; border-radius: 50px; font-weight: bold; width: 80%; max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         #game-area { flex: 1; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; position: relative; }
@@ -46,15 +77,9 @@
             text-shadow: 1px 1px 1px black;
         }
         #score-info {
-            font-weight: bold;
-            color: #f1c40f;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            margin-left: 10px;
+            font-weight: bold; color: #f1c40f; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-left: 10px;
         }
 
-        /* 结算面板 - 透明度 0.3 */
         #result-modal {
             position: absolute; top: 35%; left: 5%; width: 90%;
             background: rgba(0, 0, 0, 0.3); 
@@ -112,7 +137,6 @@
         #action-prompt { font-size: 14px; color: #bdc3c7; margin-bottom: 8px; text-shadow: 1px 1px 2px black;}
         #player-hand { display: flex; justify-content: center; align-items: flex-end; padding: 0 10px; height: 120px; }
         
-        /* 手牌重叠 -45px */
         .hand-card-wrapper { 
             width: var(--hand-card-w); max-width: 70px; height: var(--hand-card-h); max-height: 100px; 
             margin-right: -45px; 
@@ -152,8 +176,18 @@
 <body>
 
     <div id="menu-screen">
-        <h1 style="color: #e67e22; font-size: 40px; margin-bottom: 5px;">Torchlit</h1>
-        <p style="color: #aaa; font-size: 16px; margin-bottom: 30px;">移动重制版</p>
+        <h1 style="color: #e67e22; font-size: 40px; margin-bottom: 10px;">Torchlit</h1>
+        
+        <!-- 新增规则说明框 -->
+        <div class="rules-container">
+            <div class="rules-title">核心规则</div>
+            <div class="rule-item">1. <span class="rule-highlight">跟花色</span>: 必须跟打第一张的花色。红龙(🐉)领出除外。</div>
+            <div class="rule-item">2. <span class="rule-highlight">比大小</span>: 有红龙则红龙大，否则主花色数字大者赢。</div>
+            <div class="rule-item">3. <span class="rule-highlight">移动</span>: 赢家及打出<span style="color:#f1c40f">赢家数字</span>者，圆点前移一格。</div>
+            <div class="rule-item">4. <span class="rule-highlight">看守者</span>: 打出<span style="color:#3498db">最小数字</span>者成为看守者，负责将牌放入地牢。</div>
+            <div class="rule-item">5. <span class="rule-highlight">终局</span>: 剩1张手牌时收回预测牌。最后一张牌若与圆点位置<span style="color:#e74c3c">不同</span>，放入地牢计分。相同得3分。</div>
+        </div>
+
         <button class="btn" onclick="initGame(3)">3 人游戏</button>
         <button class="btn" onclick="initGame(4)">4 人游戏</button>
         <button class="btn" onclick="initGame(5)">5 人游戏</button>
@@ -541,7 +575,6 @@
         function nextRoundOrGame() {
             if(game.round < game.maxRounds) { game.round++; setupRound(); }
             else {
-                // 修改：游戏结束总结画面
                 let max = Math.max(...game.scores);
                 let wins = game.players.filter(p => game.scores[p.id] === max);
                 
