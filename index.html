@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Torchlit - 全局计分版</title>
+    <title>Torchlit - 最终完整版</title>
     <style>
         :root {
             --bg-color: #2c3e50;
@@ -39,7 +39,6 @@
 
         #game-area { flex: 1; display: flex; flex-direction: column; padding: 5px; box-sizing: border-box; position: relative; }
 
-        /* 顶部信息栏 - 调整为容纳更多文字 */
         #info-bar {
             display: flex; justify-content: space-between; align-items: center;
             padding: 8px 10px;
@@ -55,10 +54,9 @@
             margin-left: 10px;
         }
 
-        /* 结算面板 - 透明度调整为 0.3 */
+        /* 结算面板 - 透明度 0.3 */
         #result-modal {
             position: absolute; top: 35%; left: 5%; width: 90%;
-            /* 背景透明度改为 0.3 */
             background: rgba(0, 0, 0, 0.3); 
             border: 2px solid #f1c40f; border-radius: 12px;
             padding: 20px; box-sizing: border-box; display: none;
@@ -68,7 +66,6 @@
         }
         #result-content { 
             font-size: 16px; line-height: 1.8; width: 100%; margin-bottom: 15px; text-align: center; 
-            /* 增强文字阴影，保证在透明背景下清晰可见 */
             text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 5px black;
             font-weight: bold;
         }
@@ -115,6 +112,7 @@
         #action-prompt { font-size: 14px; color: #bdc3c7; margin-bottom: 8px; text-shadow: 1px 1px 2px black;}
         #player-hand { display: flex; justify-content: center; align-items: flex-end; padding: 0 10px; height: 120px; }
         
+        /* 手牌重叠 -45px */
         .hand-card-wrapper { 
             width: var(--hand-card-w); max-width: 70px; height: var(--hand-card-h); max-height: 100px; 
             margin-right: -45px; 
@@ -177,7 +175,7 @@
         </div>
 
         <div id="result-modal">
-            <h3 style="color:#f1c40f; margin:0 0 15px 0; font-size: 22px;">轮次计分</h3>
+            <h3 style="color:#f1c40f; margin:0 0 15px 0; font-size: 22px;">回合结算</h3>
             <div id="result-content"></div>
             <button class="result-btn" onclick="nextRoundOrGame()">继续</button>
         </div>
@@ -543,11 +541,34 @@
         function nextRoundOrGame() {
             if(game.round < game.maxRounds) { game.round++; setupRound(); }
             else {
+                // 修改：游戏结束总结画面
                 let max = Math.max(...game.scores);
                 let wins = game.players.filter(p => game.scores[p.id] === max);
-                let txt = "游戏结束!<br><br>";
-                if(wins.some(p => p.isHuman)) txt += "<span style='color:#f1c40f;font-size:24px'>你赢了!</span>";
-                else txt += `胜者: ${wins.map(p=>p.name).join(',')}`;
+                
+                let txt = "<h2 style='color:#f1c40f; margin-top:0'>游戏结束</h2>";
+                
+                // 按分数排序的排行榜
+                let sortedPlayers = [...game.players].sort((a,b) => game.scores[b.id] - game.scores[a.id]);
+                
+                txt += "<div style='text-align:left; width:100%; margin-bottom:15px;'>";
+                sortedPlayers.forEach(p => {
+                    let isWin = wins.includes(p);
+                    let color = isWin ? '#f1c40f' : '#fff';
+                    let weight = isWin ? 'bold' : 'normal';
+                    let crown = isWin ? '👑' : '';
+                    txt += `<div style='display:flex; justify-content:space-between; color:${color}; font-weight:${weight}; font-size:18px; border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;'>
+                        <span>${crown} ${p.name}</span>
+                        <span>${game.scores[p.id]}分</span>
+                    </div>`;
+                });
+                txt += "</div>";
+
+                if(wins.some(p => p.isHuman)) {
+                    txt += "<div style='color:#2ecc71; font-size:20px; font-weight:bold; margin-bottom:10px;'>🎉 恭喜你赢了!</div>";
+                } else {
+                    txt += "<div style='color:#ccc; font-size:16px; margin-bottom:10px;'>再接再厉!</div>";
+                }
+
                 document.getElementById('result-content').innerHTML = txt;
                 document.querySelector('.result-btn').innerText = "重新开始";
                 document.querySelector('.result-btn').onclick = () => location.reload();
