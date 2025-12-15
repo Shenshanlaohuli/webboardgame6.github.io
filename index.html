@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Torchlit - 完美修复版</title>
+    <title>Torchlit - 透明结算版</title>
     <style>
         :root {
             --bg-color: #2c3e50;
@@ -44,13 +44,21 @@
             background: rgba(0,0,0,0.2); font-size: 14px; color: #eee; border-radius: 4px; margin-bottom: 5px;
         }
 
+        /* 结算面板 - 透明化 */
         #result-modal {
             position: absolute; top: 35%; left: 5%; width: 90%;
-            background: rgba(0, 0, 0, 0.95); border: 2px solid #f1c40f; border-radius: 12px;
+            /* 背景透明度改为 0.6 */
+            background: rgba(0, 0, 0, 0.6); 
+            border: 2px solid #f1c40f; border-radius: 12px;
             padding: 20px; box-sizing: border-box; display: none;
-            flex-direction: column; align-items: center; z-index: 150; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            flex-direction: column; align-items: center; z-index: 150; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px); /* 轻微模糊背景增加可读性 */
         }
-        #result-content { font-size: 16px; line-height: 1.8; width: 100%; margin-bottom: 15px; text-align: center; }
+        #result-content { 
+            font-size: 16px; line-height: 1.8; width: 100%; margin-bottom: 15px; text-align: center; 
+            text-shadow: 1px 1px 2px black; /* 增加文字阴影防止背景干扰 */
+        }
         .result-btn { padding: 10px 30px; background: #27ae60; border: none; color: white; border-radius: 8px; font-size: 16px; }
 
         #dungeon-container { display: flex; justify-content: center; margin-bottom: 5px; flex-shrink: 0; z-index: 101; }
@@ -90,7 +98,13 @@
         #player-hand-container { height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; background: linear-gradient(to top, rgba(0,0,0,0.5), transparent); padding-bottom: 5px; overflow: hidden; position: relative; }
         #action-prompt { font-size: 14px; color: #bdc3c7; margin-bottom: 8px; text-shadow: 1px 1px 2px black;}
         #player-hand { display: flex; justify-content: center; align-items: flex-end; padding: 0 10px; height: 120px; }
-        .hand-card-wrapper { width: var(--hand-card-w); max-width: 70px; height: var(--hand-card-h); max-height: 100px; margin-right: -45px; transition: margin-right 0.2s, transform 0.2s; position: relative; }
+        
+        /* 手牌重叠修改为 -45px */
+        .hand-card-wrapper { 
+            width: var(--hand-card-w); max-width: 70px; height: var(--hand-card-h); max-height: 100px; 
+            margin-right: -45px; 
+            transition: margin-right 0.2s, transform 0.2s; position: relative; 
+        }
         .hand-card-wrapper:last-child { margin-right: 0; }
         .hand-card-wrapper:hover { margin-right: -5px; z-index: 20 !important; }
 
@@ -449,7 +463,7 @@
             renderDungeons();
             game.trick = [];
 
-            // 关键修复：只要有玩家手牌为1且有预测牌，就触发拿回牌逻辑
+            // 关键修复：强制检查拿回预测牌逻辑
             let p0 = game.players[0];
             if (p0.hand.length === 1 && p0.reserved !== null) {
                 msg("最终阶段：收回预测牌");
@@ -472,7 +486,7 @@
                 return;
             }
 
-            // 如果已经没有预测牌，且手牌剩1张，说明刚刚打完了最终墩，现在结算
+            // 结算检查
             if (p0.hand.length === 1 && p0.reserved === null) {
                 handleRoundEnd();
                 return;
